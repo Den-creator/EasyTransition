@@ -23,6 +23,10 @@
 
 import UIKit
 
+public protocol DealocateEasyTransitionProtocol : class {
+    func dealocateEasyTransition()
+}
+
 open class EasyTransition: UIPercentDrivenInteractiveTransition {
     
     open var transitionDuration: TimeInterval = 0.5
@@ -60,6 +64,8 @@ open class EasyTransition: UIPercentDrivenInteractiveTransition {
     
     fileprivate var isPresentation : Bool = false
     
+    weak open var delegate : DealocateEasyTransitionProtocol?
+    
     public init(attachedViewController: UIViewController) {
         super.init()
         
@@ -72,7 +78,6 @@ open class EasyTransition: UIPercentDrivenInteractiveTransition {
         let presentationPanGesture = UIPanGestureRecognizer()
         presentationPanGesture.addTarget(self, action: #selector(EasyTransition.dismissalPanGesture(_:)))
         attachedViewController.view.addGestureRecognizer(presentationPanGesture)
-
     }
     
     @objc func dismissalPanGesture(_ recognizer: UIPanGestureRecognizer) {
@@ -99,7 +104,9 @@ open class EasyTransition: UIPercentDrivenInteractiveTransition {
     }
     
     fileprivate func panGestureBegan(_ recognizer: UIPanGestureRecognizer) {
-        attachedViewController.dismiss(animated: true, completion: nil)
+        attachedViewController.dismiss(animated: true, completion: {
+            self.delegate?.dealocateEasyTransition()
+        })
     }
     
     fileprivate func panGestureChanged(_ recognizer: UIPanGestureRecognizer) {
@@ -126,12 +133,20 @@ open class EasyTransition: UIPercentDrivenInteractiveTransition {
     }
 }
 
-extension EasyTransition : UIViewControllerTransitioningDelegate ,UIViewControllerAnimatedTransitioning {
+
+extension EasyTransition : DimmingViewTappedProtocol, UIViewControllerTransitioningDelegate ,UIViewControllerAnimatedTransitioning {
+    
+    //DimmingViewTappedProtocol
+    
+    func dimmingViewTapped() {
+        delegate?.dealocateEasyTransition()
+    }
 
     // TransitioningDelegate
     
     public func presentationController(forPresented presented: UIViewController, presenting: UIViewController?, source: UIViewController) -> UIPresentationController? {
         let presentationController = PresentationController(presentedViewController:presented, presenting:presenting)
+        presentationController.dimmingViewDelegate = self
         presentationController.direction = direction
         presentationController.backgroundColor = backgroundColor
         presentationController.margins = margins
@@ -237,6 +252,13 @@ extension EasyTransition : UIViewControllerTransitioningDelegate ,UIViewControll
     
 }
 
+
+
+internal protocol DimmingViewTappedProtocol : class {
+    func dimmingViewTapped()
+}
+
+
 internal class PresentationController: UIPresentationController, UIAdaptivePresentationControllerDelegate {
     
     var backgroundColor: UIColor!
@@ -269,9 +291,13 @@ internal class PresentationController: UIPresentationController, UIAdaptivePrese
     
     var enableDismissTouchOutBound:Bool = true
     
+    weak var dimmingViewDelegate : DimmingViewTappedProtocol?
+        
     @objc func dimmingViewTapped(_ gesture: UIGestureRecognizer) {
         if gesture.state == UIGestureRecognizer.State.ended  && enableDismissTouchOutBound {
-            presentingViewController.dismiss(animated: true, completion: nil)
+            presentingViewController.dismiss(animated: true, completion: {
+                self.dimmingViewDelegate?.dimmingViewTapped()
+            })
         }
     }
     
